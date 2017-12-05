@@ -90,10 +90,22 @@ def add_gear(m, z):
         verts = selected_involute
     )
     
-    bmesh.update_edit_mesh(me, True)
+    #Connect the two top vertices of each involutes
+    vertices = [e for e in bm.verts]
+    edges = [e for e in bm.edges]
+
+    for vert in vertices:
+        vert.select = False
     
-    #second_involute.scale(1.0, -1.0, 1.0)
-    #second_involute.rotation_euler = (0.0, 0.0, psi)
+    for edge in edges:
+        edge.select = False
+    
+    vertices[10].select = True
+    vertices[11].select = True
+    
+    bm.edges.new((vertices[10], vertices[11]))
+    
+    bmesh.update_edit_mesh(me, True)
     
     return True
 
