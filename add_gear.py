@@ -1,5 +1,7 @@
 import bpy
+import bmesh
 
+import mathutils
 from bpy.types import Operator
 from math import (
     sin, cos, tan, 
@@ -21,7 +23,7 @@ def add_gear(m, z):
     r = m * z * cos(radians(20)) / 2    #Base Radius
     R = m * (z / 2.0 + 1)   #Tip Radius
 
-    psi = 360 * (pi / 2 + z * (tan(radians(20) - radians(20)))) / (pi * z)  #Tooth thickness at base(radians)
+    psi = 360 * (pi / 2 + z * (tan(radians(20) - radians(20)))) / (pi * z)  #Tooth thickness at base(angles)
 
     phi = 360.0 / z
 
@@ -38,6 +40,10 @@ def add_gear(m, z):
     vmax = 0.0
     vstep = 1.0
 
+     #set pivot point type and location
+    
+    bpy.context.screen.areas[4].spaces[0].pivot_point = 'CURSOR'
+    # bpy.context.area.spaces[0].cursor_location = (0.0, 0.0, 0.0)
 
     #draw involute
     bpy.ops.mesh.primitive_xyz_function_surface(
@@ -52,9 +58,36 @@ def add_gear(m, z):
         range_v_max = vmax,
         range_v_step = vstep
     )
+    
+    bpy.ops.object.mode_set(mode = 'EDIT')
+    bpy.ops.mesh.remove_doubles()
+    
+    first_involute = bpy.context.active_object.data
+    
+    #Duplicate involute
+    bpy.ops.mesh.duplicate()
 
-
-
+    mesh = bpy.context.active_object.data
+    second_involute = list(filter(lambda v: v.select, mesh.vertices))
+    
+    #Scale and Rotate the second involute
+    me = first_involute
+    
+    bm = bmesh.from_edit_mesh(me)
+    face = bm.faces.active
+    
+    scale = mathutils.Vector((1.0, -1.0, 1.0))
+    bmesh.ops.scale(
+        bm,
+        vec=scale,
+        verts=face.verts
+        )
+    
+    bmesh.update_edit_mesh(me, True)
+    
+    #second_involute.scale(1.0, -1.0, 1.0)
+    #second_involute.rotation_euler = (0.0, 0.0, psi)
+    
     return True
 
 
@@ -95,65 +128,3 @@ class AddGear(Operator):
             return {'FINISHED'}
 
         return {'CANCELLED'}
-
-bl_info= {
-    "name": "engineering_modeling_tools",
-    "author": "V.Eugen",
-    "version": (0, 0, 1),
-    "blender": (2, 79, 0),
-    "location": "View3D > Add > Mesh",
-    "description": "Add Engineering object types",
-    "warning": "",
-    "wiki_url": "",
-    "category": "Add Mesh"
-    }
-
-
-from . import add_gear
-
-from bpy.types import Menu
-
-
-class INFO_MT_mesh_gears_add(Menu):
-    bl_idname = "INFO_MT_mesh_gears_add"
-    bl_label = "Gears"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.operator_context = 'INVOKE_REGION_WIN'
-        layout.operator("mesh.involute_gear", text="Involute Gear")
-
-class INFO_MT_mesh_engineering_modeling(Menu):
-    bl_idname = "INFO_MT_mesh_em_add"
-    bl_label = "Engineering Modeling"
-
-    def draw(self, context):
-        layout = self.layout
-        layout.operator_context = 'INVOKE_REGION_WIN'
-        layout.menu("INFO_MT_mesh_gears_add", text="Gears", icon="SCRIPTWIN")
-
-
-def menu_func(self, context):
-    layout = self.layout
-    layout.operator_context = 'INVOKE_REGION_WIN'
-
-    layout.separator()
-    layout.menu(
-        "INFO_MT_mesh_em_add",
-        text="Engineering Modeling",
-        icon="SCRIPTWIN")
-
-        
-def register():
-    bpy.utils.register_module(__name__)
-
-    bpy.types.INFO_MT_mesh_add.append(menu_func)
-
-def unregister():
-    bpy.types.INFO_MT_mesh_add.remove(menu_func)
-
-    bpy.utils.unregister_module(__name__)
-
-
-if __name__ == "__main__":
-    register()
