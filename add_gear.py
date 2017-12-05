@@ -14,7 +14,6 @@ from bpy.props import (
     FloatProperty, IntProperty
     )
 
-
 def add_gear(m, z):
 
     if z < 2:
@@ -23,7 +22,7 @@ def add_gear(m, z):
     r = m * z * cos(radians(20)) / 2    #Base Radius
     R = m * (z / 2.0 + 1)   #Tip Radius
 
-    psi = 360 * (pi / 2 + z * (tan(radians(20) - radians(20)))) / (pi * z)  #Tooth thickness at base(angles)
+    psi = 360 * (pi / 2 + z * (tan(radians(20)) - radians(20))) / (pi * z)  #Tooth thickness at base(angles)
 
     phi = 360.0 / z
 
@@ -40,7 +39,7 @@ def add_gear(m, z):
     vmax = 0.0
     vstep = 1.0
 
-     #set pivot point type and location
+    #set pivot point type and location
     
     bpy.context.screen.areas[4].spaces[0].pivot_point = 'CURSOR'
     # bpy.context.area.spaces[0].cursor_location = (0.0, 0.0, 0.0)
@@ -62,26 +61,34 @@ def add_gear(m, z):
     bpy.ops.object.mode_set(mode = 'EDIT')
     bpy.ops.mesh.remove_doubles()
     
-    first_involute = bpy.context.active_object.data
+    mesh = bpy.context.active_object.data
+    first_involute = list(filter(lambda v: v.select, mesh.vertices))
     
     #Duplicate involute
     bpy.ops.mesh.duplicate()
-
-    mesh = bpy.context.active_object.data
-    second_involute = list(filter(lambda v: v.select, mesh.vertices))
     
-    #Scale and Rotate the second involute
-    me = first_involute
-    
+    me = bpy.context.active_object.data
     bm = bmesh.from_edit_mesh(me)
-    face = bm.faces.active
+    selected_involute = list(filter(lambda v: v.select, bm.verts))
     
+    #Scale the selected involute
     scale = mathutils.Vector((1.0, -1.0, 1.0))
     bmesh.ops.scale(
         bm,
-        vec=scale,
-        verts=face.verts
+        vec = scale,
+        verts = selected_involute
         )
+        
+    #Rotate the selected involute
+    center = bpy.context.scene.cursor_location
+    rot = mathutils.Euler((0.0, 0.0, radians(psi))).to_matrix()
+    
+    bmesh.ops.rotate(
+        bm,
+        cent = center,
+        matrix = rot,
+        verts = selected_involute
+    )
     
     bmesh.update_edit_mesh(me, True)
     
@@ -89,7 +96,6 @@ def add_gear(m, z):
     #second_involute.rotation_euler = (0.0, 0.0, psi)
     
     return True
-
 
 class AddGear(Operator):
     bl_idname = "mesh.involute_gear"
