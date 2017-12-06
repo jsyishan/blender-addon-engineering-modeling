@@ -14,7 +14,7 @@ from bpy.props import (
     FloatProperty, IntProperty
     )
 
-def add_gear(m, z):
+def add_gear(m, z, h):
 
     if z < 2:
         return False
@@ -120,7 +120,7 @@ def add_gear(m, z):
     #Connect the two top vertices of each involutes
     vertices = [e for e in bm.verts]
     
-    if len(vertices) is 22:
+    if len(vertices) == 22:
         handle_all_verts_and_edges(False)
     
         vertices[10].select = True
@@ -187,6 +187,12 @@ def add_gear(m, z):
     #Remove doubles
     handle_all_verts_and_edges(True)
     bpy.ops.mesh.remove_doubles()
+    
+    #Extrude
+    if len(bm.verts) == 666:
+        bpy.ops.mesh.extrude_region_move(TRANSFORM_OT_translate={"value":(0, 0, h)})
+    
+    
     
     bmesh.update_edit_mesh(me, True)
     
