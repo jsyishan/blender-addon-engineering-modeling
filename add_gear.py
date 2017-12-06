@@ -42,7 +42,7 @@ def add_gear(m, z):
     #set pivot point type and location
     
     bpy.context.screen.areas[4].spaces[0].pivot_point = 'CURSOR'
-    # bpy.context.area.spaces[0].cursor_location = (0.0, 0.0, 0.0)
+    bpy.context.screen.areas[4].spaces[0].cursor_location = (0.0, 0.0, 0.0)
 
     #draw involute
     bpy.ops.mesh.primitive_xyz_function_surface(
@@ -58,17 +58,44 @@ def add_gear(m, z):
         range_v_step = vstep
     )
     
+    #enter edit mode
     bpy.ops.object.mode_set(mode = 'EDIT')
+    
+    #remove doubles
     bpy.ops.mesh.remove_doubles()
     
-    mesh = bpy.context.active_object.data
-    first_involute = list(filter(lambda v: v.select, mesh.vertices))
+    #init bmesh
+    me = bpy.context.active_object.data
+    bm = bmesh.from_edit_mesh(me)
+    
+    #select/unselect all vertices and edges
+    #param Boolean@select to select(True) or unselect(False) all verts and edges
+    #return None
+    def handle_all_verts_and_edges(select):
+        vertices = [e for e in bm.verts]
+        edges = [e for e in bm.edges]
+
+        for vert in vertices:
+            vert.select = select
+    
+        for edge in edges:
+            edge.select = select
+    
+    #set cursor to selected
+    #param None
+    #return None
+    def set_cursor_to_selected():
+        for area in bpy.context.screen.areas:
+            if area.type == 'VIEW_3D':
+                ctx = bpy.context.copy()
+                ctx['area'] = area
+                ctx['region'] = area.regions[-1]
+                bpy.ops.view3d.view_selected(ctx)
+                bpy.ops.view3d.snap_cursor_to_selected(ctx)
+                break
     
     #Duplicate involute
     bpy.ops.mesh.duplicate()
-    
-    me = bpy.context.active_object.data
-    bm = bmesh.from_edit_mesh(me)
     selected_involute = list(filter(lambda v: v.select, bm.verts))
     
     #Scale the selected involute
@@ -92,23 +119,78 @@ def add_gear(m, z):
     
     #Connect the two top vertices of each involutes
     vertices = [e for e in bm.verts]
-    edges = [e for e in bm.edges]
+    
+    if len(vertices) is 22:
+        handle_all_verts_and_edges(False)
+    
+        vertices[10].select = True
+        vertices[11].select = True
+    
+        bm.edges.new((vertices[10], vertices[11]))
+    
+    #Duplicate and rotate for a phi degree
+    handle_all_verts_and_edges(True)
 
-    for vert in vertices:
-        vert.select = False
+    bpy.ops.mesh.duplicate()
     
-    for edge in edges:
-        edge.select = False
+    selected_involute = list(filter(lambda v: v.select, bm.verts))
     
-    vertices[10].select = True
-    vertices[11].select = True
+    center = bpy.context.scene.cursor_location
+    rot = mathutils.Euler((0.0, 0.0, radians(phi))).to_matrix()
     
-    bm.edges.new((vertices[10], vertices[11]))
+    bmesh.ops.rotate(
+        bm,
+        cent = center,
+        matrix = rot,
+        verts = selected_involute
+    )
+    
+    #Draw a semi-circle between the two buttom vertices of the teeth
+    handle_all_verts_and_edges(False)
+    
+    vertices = [e for e in bm.verts]
+    vertices[21].select = True
+    vertices[22].select = True
+    
+    set_cursor_to_selected()
+    
+    vertices[22].select = False
+    
+    bpy.ops.mesh.spin(
+        steps = 16,
+        dupli = False,
+        angle = radians(180),
+        center = bpy.context.screen.areas[4].spaces[0].cursor_location,
+        axis = (0.0, 0.0, 1.0)
+    )
+    
+    bpy.context.screen.areas[4].spaces[0].cursor_location = (0.0, 0.0, 0.0)
+    
+    #Duplicate and rotate until a full round
+    handle_all_verts_and_edges(True)
+    
+    for i in range(z - 1):
+        bpy.ops.mesh.duplicate()
+        
+        selected_involute = list(filter(lambda v: v.select, bm.verts))
+    
+        center = bpy.context.scene.cursor_location
+        rot = mathutils.Euler((0.0, 0.0, radians(phi))).to_matrix()
+    
+        bmesh.ops.rotate(
+            bm,
+            cent = center,
+            matrix = rot,
+            verts = selected_involute
+        )
+    
+    #Remove doubles
+    handle_all_verts_and_edges(True)
+    bpy.ops.mesh.remove_doubles()
     
     bmesh.update_edit_mesh(me, True)
     
     return True
-
 class AddGear(Operator):
     bl_idname = "mesh.involute_gear"
     bl_label = "Add Involute Gear"
