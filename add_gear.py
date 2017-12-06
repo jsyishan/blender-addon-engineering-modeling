@@ -20,11 +20,11 @@ def add_gear(m, z, h, ir):
         return False
     
     r = m * z * cos(radians(20)) / 2    #Base Radius
-    R = m * (z / 2.0 + 1)   #Tip Radius
+    R = m * (z / 2 + 1)   #Tip Radius
 
     psi = 360 * (pi / 2 + z * (tan(radians(20)) - radians(20))) / (pi * z)  #Tooth thickness at base(angles)
 
-    phi = 360.0 / z
+    phi = 360 / z
 
     invx = str(round(r, 4)) + " * (cos(u) + u * sin(u))";   #X-equation
     invy = str(round(r, 4)) + " * (sin(u) - u * cos(u))";   #Y-equation
@@ -129,13 +129,12 @@ def add_gear(m, z, h, ir):
     #Connect the two top vertices of each involutes
     vertices = [e for e in bm.verts]
     
-    if len(vertices) == 22:
-        handle_all_verts_and_edges(False)
+    handle_all_verts_and_edges(False)
     
-        vertices[10].select = True
-        vertices[11].select = True
+    vertices[10].select = True
+    vertices[11].select = True
     
-        bm.edges.new((vertices[10], vertices[11]))
+    bm.edges.new((vertices[10], vertices[11]))
         
     #Create a new face from all of the vertices
     handle_all_verts_and_edges(True)
@@ -204,11 +203,11 @@ def add_gear(m, z, h, ir):
     
     #Remove doubles
     handle_all_verts_and_edges(True)
+    handle_all_faces(True)
     bpy.ops.mesh.remove_doubles()
     
     #Extrude
-    if len(bm.verts) == 666:
-        bpy.ops.mesh.extrude_region_move(TRANSFORM_OT_translate={"value":(0, 0, h)})
+    bpy.ops.mesh.extrude_region_move(TRANSFORM_OT_translate={"value":(0, 0, h)})
     
     #Create inner circle and bridge with the base circle(vertices)
     set_cursor_to_selected()
@@ -218,11 +217,11 @@ def add_gear(m, z, h, ir):
     
     verts_to_base_radius = list(filter(
         lambda v:
-            round(sqrt(pow(v.co.x, 2) + pow(v.co.y, 2)), 3) <= round(r, 3),
+            round(sqrt(pow(v.co.x, 2) + pow(v.co.y, 2)), 4) <= round(r, 4) + 0.0001,
         bm.verts))
         
     bpy.ops.mesh.primitive_circle_add(
-        vertices = len(verts_to_base_radius) / 2,
+        vertices = int(len(verts_to_base_radius) / 2),
         radius = ir,
         location = bpy.context.scene.cursor_location
     )
@@ -242,7 +241,7 @@ def add_gear(m, z, h, ir):
     
     verts_to_inner_circle = list(filter(
         lambda v:
-            round(sqrt(pow(v.co.x, 2) + pow(v.co.y, 2)), 3) <= round(ir, 3),
+            round(sqrt(pow(v.co.x, 2) + pow(v.co.y, 2)), 3) <= round(ir, 3) + 0.001,
         bm.verts))
     
     for e in list(filter(lambda v: v.co.z == h, verts_to_inner_circle)):
